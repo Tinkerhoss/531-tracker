@@ -1,11 +1,9 @@
-```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Wendler 5/3/1 Companion</title>
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -20,7 +18,6 @@
         }
     </script>
     
-    <!-- React and Babel CDN for in-browser compilation -->
     <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
@@ -35,14 +32,12 @@
 </head>
 <body class="bg-zinc-950 text-zinc-100 transition-colors duration-300">
     <div id="root">
-        <!-- Loader fallback while Babel compiles React code -->
         <div class="min-h-screen flex flex-col items-center justify-center bg-zinc-950 text-zinc-100">
             <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-indigo-500 border-r-2 mb-4"></div>
             <p class="text-sm font-bold tracking-wider text-zinc-400">LOADING WENDLER 5/3/1...</p>
         </div>
     </div>
 
-    <!-- React Application Logic -->
     <script type="text/babel">
         const { useState, useEffect, useRef } = React;
 
@@ -146,21 +141,40 @@
             // User Settings State (Local storage synced)
             const [settings, setSettings] = useState(() => {
                 const saved = localStorage.getItem('wendler_standalone_settings');
-                return saved ? JSON.parse(saved) : {
+                let initial = {
                     unit: 'lbs', 
                     barWeight: 45, 
                     roundingStep: 5, 
                     trainingMaxPercent: 90, 
                     plates: [45, 35, 25, 10, 5, 2.5], 
-                    oneRepMaxes: {
-                        press: 135,
-                        deadlift: 315,
-                        bench: 225,
-                        squat: 315
+                    fiveRepMaxes: {
+                        press: 115,
+                        deadlift: 270,
+                        bench: 195,
+                        squat: 270
                     },
                     assistanceTemplate: 'BBB', 
                     cycleNumber: 1
                 };
+
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        // Migration fallback: If they only had 1RMs saved, convert to 5RMs using Epley division
+                        if (parsed.oneRepMaxes && !parsed.fiveRepMaxes) {
+                            parsed.fiveRepMaxes = {
+                                press: Math.round(parsed.oneRepMaxes.press / 1.1667),
+                                deadlift: Math.round(parsed.oneRepMaxes.deadlift / 1.1667),
+                                bench: Math.round(parsed.oneRepMaxes.bench / 1.1667),
+                                squat: Math.round(parsed.oneRepMaxes.squat / 1.1667)
+                            };
+                        }
+                        return { ...initial, ...parsed };
+                    } catch (e) {
+                        return initial;
+                    }
+                }
+                return initial;
             });
 
             // Workout Logs
@@ -274,21 +288,27 @@
             };
 
             // --- WENDLER CALCULATOR ---
-            const calculateTrainingMax = (oneRepMax) => {
-                const rawTM = oneRepMax * (settings.trainingMaxPercent / 100);
+            const calculateOneRepMax = (fiveRepMax) => {
+                return Math.round(fiveRepMax * 1.1667 * 10) / 10;
+            };
+
+            const calculateTrainingMax = (fiveRepMax) => {
+                const calculatedOneRepMax = fiveRepMax * 1.1667;
+                const rawTM = calculatedOneRepMax * (settings.trainingMaxPercent / 100);
                 return Math.round(rawTM / settings.roundingStep) * settings.roundingStep;
             };
 
             const getCalculatedWeight = (liftKey, week, isWarmup, setIndex) => {
-                const oneRepMax = settings.oneRepMaxes[liftKey] || 100;
-                const trainingMax = calculateTrainingMax(oneRepMax);
+                const fiveRepMax = settings.fiveRepMaxes[liftKey] || 100;
+                const trainingMax = calculateTrainingMax(fiveRepMax);
                 const percentage = isWarmup ? WARMUP_PERCENTAGES[setIndex] : WENDLER_PERCENTAGES[week][setIndex];
                 return Math.round((trainingMax * percentage) / settings.roundingStep) * settings.roundingStep;
             };
 
             const getWorkoutsForWeek = (week) => {
                 return Object.values(LIFTS).map(lift => {
-                    const trainingMax = calculateTrainingMax(settings.oneRepMaxes[lift.key]);
+                    const fiveRepMax = settings.fiveRepMaxes[lift.key];
+                    const trainingMax = calculateTrainingMax(fiveRepMax);
                     const warmupSets = WARMUP_PERCENTAGES.map((pct, idx) => ({
                         type: 'warmup',
                         percentage: pct * 100,
@@ -508,19 +528,19 @@
             };
 
             const handleIncrementCycle = () => {
-                if (!confirm("Start next cycle? This advances your cycle number and adds +5 lbs/2.5kg to upper body lifts, and +10 lbs/5kg to squats/deadlifts.")) return;
+                if (!confirm("Start next cycle? This advances your cycle number and adds to your 5-Rep Maxes (+5 lbs/2.5kg to upper body, +10 lbs/5kg to squats/deadlifts)."));
                 const inc = settings.unit === 'lbs' ? { upper: 5, lower: 10 } : { upper: 2.5, lower: 5 };
                 setSettings({
                     ...settings,
                     cycleNumber: settings.cycleNumber + 1,
-                    oneRepMaxes: {
-                        press: settings.oneRepMaxes.press + inc.upper,
-                        bench: settings.oneRepMaxes.bench + inc.upper,
-                        deadlift: settings.oneRepMaxes.deadlift + inc.lower,
-                        squat: settings.oneRepMaxes.squat + inc.lower
+                    fiveRepMaxes: {
+                        press: settings.fiveRepMaxes.press + inc.upper,
+                        bench: settings.fiveRepMaxes.bench + inc.upper,
+                        deadlift: settings.fiveRepMaxes.deadlift + inc.lower,
+                        squat: settings.fiveRepMaxes.squat + inc.lower
                     }
                 });
-                triggerNotification(`Welcome to Cycle ${settings.cycleNumber + 1}! Maxes increased!`);
+                triggerNotification(`Welcome to Cycle ${settings.cycleNumber + 1}! 5RM benchmarks increased!`);
             };
 
             return (
@@ -583,7 +603,7 @@
                                         <div>
                                             <span className="text-xs font-bold uppercase bg-indigo-600 text-white px-2.5 py-0.5 rounded-full">Jim Wendler Protocol</span>
                                             <h2 className="text-2xl font-black mt-2">Cycle Progression & Setup</h2>
-                                            <p className="text-xs opacity-70 mt-1">Based on Training Max of {settings.trainingMaxPercent}% of actual 1-Rep Max benchmarks.</p>
+                                            <p className="text-xs opacity-70 mt-1">Lifts configured from your 5-Rep Max. Training Max runs at {settings.trainingMaxPercent}% of estimated 1RM.</p>
                                         </div>
                                         <button 
                                             onClick={handleIncrementCycle}
@@ -596,12 +616,18 @@
                                     {/* Weights Summary Grid */}
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-zinc-800">
                                         {Object.values(LIFTS).map(lift => {
-                                            const oRM = settings.oneRepMaxes[lift.key];
+                                            const fRM = settings.fiveRepMaxes[lift.key];
                                             return (
                                                 <div key={lift.key} className="p-3.5 rounded-xl bg-zinc-950/40 border border-zinc-800/80">
                                                     <p className="text-[10px] font-extrabold text-indigo-400 uppercase">{lift.name}</p>
-                                                    <h4 className="text-lg font-black mt-1">{calculateTrainingMax(oRM)} {settings.unit} <span className="text-[10px] font-normal opacity-50">TM</span></h4>
-                                                    <span className="text-[10px] opacity-60 block">1RM Benchmark: {oRM}</span>
+                                                    <h4 className="text-lg font-black mt-1">
+                                                        {calculateTrainingMax(fRM)} {settings.unit}
+                                                        <span className="text-[10px] font-normal opacity-50 ml-1">TM</span>
+                                                    </h4>
+                                                    <div className="text-[9px] opacity-65 mt-1 space-y-0.5">
+                                                        <span className="block">5RM Input: {fRM} {settings.unit}</span>
+                                                        <span className="block">Est. 1RM: {calculateOneRepMax(fRM)} {settings.unit}</span>
+                                                    </div>
                                                 </div>
                                             );
                                         })}
@@ -664,7 +690,7 @@
                                             </div>
                                             <div className="flex gap-2">
                                                 <button 
-                                                    onClick={() => openPlateCalculator(calculateTrainingMax(settings.oneRepMaxes[activeSession.liftKey]))}
+                                                    onClick={() => openPlateCalculator(calculateTrainingMax(settings.fiveRepMaxes[activeSession.liftKey]))}
                                                     className="px-3.5 py-2 bg-zinc-800 text-zinc-300 text-xs rounded-xl font-bold flex items-center gap-1.5"
                                                 >
                                                     <Icon name="layers" className="w-4 h-4" /> Plates
@@ -803,7 +829,7 @@
                                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
                                         {Object.values(LIFTS).map(lift => {
                                             const trend = logs.filter(l => l.liftKey === lift.key && l.estimated1RM).reverse();
-                                            const current1RM = trend[trend.length - 1]?.estimated1RM || settings.oneRepMaxes[lift.key];
+                                            const current1RM = trend[trend.length - 1]?.estimated1RM || calculateOneRepMax(settings.fiveRepMaxes[lift.key]);
                                             return (
                                                 <div key={lift.key} className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col justify-between shadow-inner">
                                                     <div>
@@ -875,24 +901,36 @@
                                         </div>
                                     </div>
 
-                                    {/* 1RM Edit inputs */}
+                                    {/* 5RM Edit inputs */}
                                     <div className="pt-6 border-t border-zinc-800">
-                                        <h4 className="text-xs font-bold text-indigo-400 uppercase mb-4">Edit Current 1-Rep Max benchmarks</h4>
+                                        <div className="mb-4">
+                                            <h4 className="text-xs font-bold text-indigo-400 uppercase">Edit Current 5-Rep Max (5RM) Lifts</h4>
+                                            <p className="text-[10px] opacity-65 mt-0.5">The app calculates your 1RM using Epley's rule: $1\text{RM} = 5\text{RM} \times 1.1667$</p>
+                                        </div>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                                            {Object.values(LIFTS).map(lift => (
-                                                <div key={lift.key} className="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 shadow-inner">
-                                                    <label className="text-[10px] font-bold uppercase block text-zinc-500">{lift.name}</label>
-                                                    <input 
-                                                        type="number" 
-                                                        value={settings.oneRepMaxes[lift.key]} 
-                                                        onChange={e => {
-                                                            const oRMs = { ...settings.oneRepMaxes, [lift.key]: Number(e.target.value) };
-                                                            setSettings({ ...settings, oneRepMaxes: oRMs });
-                                                        }} 
-                                                        className="w-full text-center py-1.5 font-bold text-xs bg-zinc-900 border border-zinc-800 rounded mt-2 text-zinc-100" 
-                                                    />
-                                                </div>
-                                            ))}
+                                            {Object.values(LIFTS).map(lift => {
+                                                const fRM = settings.fiveRepMaxes[lift.key] || 100;
+                                                const calculated1RM = calculateOneRepMax(fRM);
+                                                const calculatedTM = calculateTrainingMax(fRM);
+                                                return (
+                                                    <div key={lift.key} className="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 shadow-inner">
+                                                        <label className="text-[10px] font-bold uppercase block text-zinc-500">{lift.name}</label>
+                                                        <input 
+                                                            type="number" 
+                                                            value={fRM} 
+                                                            onChange={e => {
+                                                                const fRMs = { ...settings.fiveRepMaxes, [lift.key]: Number(e.target.value) };
+                                                                setSettings({ ...settings, fiveRepMaxes: fRMs });
+                                                            }} 
+                                                            className="w-full text-center py-1.5 font-bold text-xs bg-zinc-900 border border-zinc-800 rounded mt-2 text-zinc-100" 
+                                                        />
+                                                        <div className="text-[9px] opacity-65 mt-2 space-y-0.5 text-center">
+                                                            <span className="block">Est. 1RM: <strong>{calculated1RM} {settings.unit}</strong></span>
+                                                            <span className="block">TM ({settings.trainingMaxPercent}%): <strong>{calculatedTM} {settings.unit}</strong></span>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
                                         </div>
                                     </div>
                                 </div>
@@ -971,5 +1009,3 @@
     </script>
 </body>
 </html>
-
-```
