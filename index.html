@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Wendler 5/3/1 Companion</title>
+    <title>Wendler 5/3/1 Companion (KG)</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script>
         tailwind.config = {
@@ -34,7 +34,7 @@
     <div id="root">
         <div class="min-h-screen flex flex-col items-center justify-center bg-zinc-950 text-zinc-100">
             <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-indigo-500 border-r-2 mb-4"></div>
-            <p class="text-sm font-bold tracking-wider text-zinc-400">LOADING WENDLER 5/3/1...</p>
+            <p class="text-sm font-bold tracking-wider text-zinc-400">LOADING WENDLER 5/3/1 (KG)...</p>
         </div>
     </div>
 
@@ -142,33 +142,29 @@
             const [settings, setSettings] = useState(() => {
                 const saved = localStorage.getItem('wendler_standalone_settings');
                 let initial = {
-                    unit: 'lbs', 
-                    barWeight: 45, 
-                    roundingStep: 5, 
+                    unit: 'kg', 
+                    barWeight: 20, 
+                    roundingStep: 2.5, 
                     trainingMaxPercent: 90, 
-                    plates: [45, 35, 25, 10, 5, 2.5], 
+                    plates: [25, 20, 15, 10, 5, 2.5, 1.25], 
                     fiveRepMaxes: {
-                        press: 115,
-                        deadlift: 270,
-                        bench: 195,
-                        squat: 270
+                        press: 50,
+                        deadlift: 120,
+                        bench: 80,
+                        squat: 100
                     },
-                    assistanceTemplate: 'BBB', 
+                    assistanceTemplate: 'FSL', // Defaulting to First Set Last
                     cycleNumber: 1
                 };
 
                 if (saved) {
                     try {
                         const parsed = JSON.parse(saved);
-                        // Migration fallback: If they only had 1RMs saved, convert to 5RMs using Epley division
-                        if (parsed.oneRepMaxes && !parsed.fiveRepMaxes) {
-                            parsed.fiveRepMaxes = {
-                                press: Math.round(parsed.oneRepMaxes.press / 1.1667),
-                                deadlift: Math.round(parsed.oneRepMaxes.deadlift / 1.1667),
-                                bench: Math.round(parsed.oneRepMaxes.bench / 1.1667),
-                                squat: Math.round(parsed.oneRepMaxes.squat / 1.1667)
-                            };
-                        }
+                        // Clean up any historical lbs data artifacts if existing
+                        parsed.unit = 'kg';
+                        if (parsed.barWeight === 45) parsed.barWeight = 20;
+                        if (parsed.roundingStep === 5) parsed.roundingStep = 2.5;
+                        if (!parsed.assistanceTemplate) parsed.assistanceTemplate = 'FSL';
                         return { ...initial, ...parsed };
                     } catch (e) {
                         return initial;
@@ -210,7 +206,7 @@
                 1: { name: 'Week 1: 3x5 (Accumulation)', description: 'Warmup, then working sets of 5, 5, and 5+ reps' },
                 2: { name: 'Week 2: 3x3 (Intensification)', description: 'Warmup, then working sets of 3, 3, and 3+ reps' },
                 3: { name: 'Week 3: 5/3/1 (Realization)', description: 'Warmup, then working sets of 5, 3, and 1+ reps' },
-                4: { name: 'Week 4: Deload (Recovery)', description: 'Recovery cycle with light weights. No AMRAP sets.' }
+                4: { name: 'Week 4: Deload (Recovery)', description: 'Recovery cycle with light weights. No AMRAP or assistance work.' }
             };
 
             const WENDLER_PERCENTAGES = {
@@ -309,6 +305,7 @@
                 return Object.values(LIFTS).map(lift => {
                     const fiveRepMax = settings.fiveRepMaxes[lift.key];
                     const trainingMax = calculateTrainingMax(fiveRepMax);
+                    
                     const warmupSets = WARMUP_PERCENTAGES.map((pct, idx) => ({
                         type: 'warmup',
                         percentage: pct * 100,
@@ -337,18 +334,36 @@
                     });
 
                     let assistanceSets = [];
-                    if (settings.assistanceTemplate === 'BBB') {
-                        const assistanceWeight = Math.round((trainingMax * 0.50) / settings.roundingStep) * settings.roundingStep;
-                        for (let i = 1; i <= 5; i++) {
-                            assistanceSets.push({
-                                type: 'assistance',
-                                name: `${lift.name} (BBB)`,
-                                targetReps: 10,
-                                targetWeight: assistanceWeight,
-                                completed: false,
-                                actualReps: 10,
-                                actualWeight: assistanceWeight
-                            });
+                    // Skip supplemental assistance on deload week (Week 4) to stay true to protocol recovery
+                    if (week !== 4) {
+                        if (settings.assistanceTemplate === 'FSL') {
+                            // First Set Last: 5x5 using the weight of the very first working set (index 0)
+                            const fslWeight = getCalculatedWeight(lift.key, week, false, 0);
+                            for (let i = 1; i <= 5; i++) {
+                                assistanceSets.push({
+                                    type: 'assistance',
+                                    name: `${lift.name} (FSL)`,
+                                    targetReps: 5,
+                                    targetWeight: fslWeight,
+                                    completed: false,
+                                    actualReps: 5,
+                                    actualWeight: fslWeight
+                                });
+                            }
+                        } else if (settings.assistanceTemplate === 'BBB') {
+                            // Boring But Big: 5x10 at 50% of Training Max
+                            const assistanceWeight = Math.round((trainingMax * 0.50) / settings.roundingStep) * settings.roundingStep;
+                            for (let i = 1; i <= 5; i++) {
+                                assistanceSets.push({
+                                    type: 'assistance',
+                                    name: `${lift.name} (BBB)`,
+                                    targetReps: 10,
+                                    targetWeight: assistanceWeight,
+                                    completed: false,
+                                    actualReps: 10,
+                                    actualWeight: assistanceWeight
+                                });
+                            }
                         }
                     }
 
@@ -495,7 +510,7 @@
                     const dateFormatted = new Date(log.date).toLocaleDateString();
                     const completedSetsStr = log.sets
                         .filter(s => s.completed)
-                        .map(s => `${s.actualWeight}${settings.unit} x ${s.actualReps}`)
+                        .map(s => `${s.actualWeight}kg x ${s.actualReps}`)
                         .join(', ');
                     const amrapStr = log.amrapAchieved ? `${log.amrapAchieved.weight} x ${log.amrapAchieved.reps}` : "N/A";
                     const est1RMStr = log.estimated1RM ? log.estimated1RM : "N/A";
@@ -528,19 +543,18 @@
             };
 
             const handleIncrementCycle = () => {
-                if (!confirm("Start next cycle? This advances your cycle number and adds to your 5-Rep Maxes (+5 lbs/2.5kg to upper body, +10 lbs/5kg to squats/deadlifts)."));
-                const inc = settings.unit === 'lbs' ? { upper: 5, lower: 10 } : { upper: 2.5, lower: 5 };
+                if (!confirm("Start next cycle? This advances your cycle number and adds clean metric progression (+2.5kg to upper body, +5kg to squats/deadlifts).")) return;
                 setSettings({
                     ...settings,
                     cycleNumber: settings.cycleNumber + 1,
                     fiveRepMaxes: {
-                        press: settings.fiveRepMaxes.press + inc.upper,
-                        bench: settings.fiveRepMaxes.bench + inc.upper,
-                        deadlift: settings.fiveRepMaxes.deadlift + inc.lower,
-                        squat: settings.fiveRepMaxes.squat + inc.lower
+                        press: settings.fiveRepMaxes.press + 2.5,
+                        bench: settings.fiveRepMaxes.bench + 2.5,
+                        deadlift: settings.fiveRepMaxes.deadlift + 5,
+                        squat: settings.fiveRepMaxes.squat + 5
                     }
                 });
-                triggerNotification(`Welcome to Cycle ${settings.cycleNumber + 1}! 5RM benchmarks increased!`);
+                triggerNotification(`Welcome to Cycle ${settings.cycleNumber + 1}! Metric 5RM benchmarks stepped up!`);
             };
 
             return (
@@ -554,12 +568,12 @@
                                 </div>
                                 <div>
                                     <h1 className="font-extrabold text-lg tracking-tight">Wendler 5/3/1 Companion</h1>
-                                    <p className="text-xs opacity-75">Cycle {settings.cycleNumber} &bull; Personal Companion</p>
+                                    <p className="text-xs opacity-75">Cycle {settings.cycleNumber} &bull; Metric (kg)</p>
                                 </div>
                             </div>
                             <div className="flex items-center space-x-2">
                                 <span className="text-[10px] uppercase font-bold bg-zinc-800/80 text-zinc-400 px-2.5 py-1 rounded border border-zinc-700/50">
-                                    Offline Storage Ready
+                                    Offline Cache Ready
                                 </span>
                                 <button 
                                     onClick={() => setDarkMode(!darkMode)}
@@ -601,9 +615,9 @@
                                 <div className={`p-6 rounded-2xl border ${darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-slate-200'} relative overflow-hidden shadow-md`}>
                                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                                         <div>
-                                            <span className="text-xs font-bold uppercase bg-indigo-600 text-white px-2.5 py-0.5 rounded-full">Jim Wendler Protocol</span>
+                                            <span className="text-xs font-bold uppercase bg-indigo-600 text-white px-2.5 py-0.5 rounded-full">5/3/1 + {settings.assistanceTemplate} Protocol</span>
                                             <h2 className="text-2xl font-black mt-2">Cycle Progression & Setup</h2>
-                                            <p className="text-xs opacity-70 mt-1">Lifts configured from your 5-Rep Max. Training Max runs at {settings.trainingMaxPercent}% of estimated 1RM.</p>
+                                            <p className="text-xs opacity-70 mt-1">Lifts configured from your 5-Rep Max. Training Max targets {settings.trainingMaxPercent}% of your estimated 1RM.</p>
                                         </div>
                                         <button 
                                             onClick={handleIncrementCycle}
@@ -621,12 +635,12 @@
                                                 <div key={lift.key} className="p-3.5 rounded-xl bg-zinc-950/40 border border-zinc-800/80">
                                                     <p className="text-[10px] font-extrabold text-indigo-400 uppercase">{lift.name}</p>
                                                     <h4 className="text-lg font-black mt-1">
-                                                        {calculateTrainingMax(fRM)} {settings.unit}
+                                                        {calculateTrainingMax(fRM)} kg
                                                         <span className="text-[10px] font-normal opacity-50 ml-1">TM</span>
                                                     </h4>
                                                     <div className="text-[9px] opacity-65 mt-1 space-y-0.5">
-                                                        <span className="block">5RM Input: {fRM} {settings.unit}</span>
-                                                        <span className="block">Est. 1RM: {calculateOneRepMax(fRM)} {settings.unit}</span>
+                                                        <span className="block">5RM Bench: {fRM} kg</span>
+                                                        <span className="block">Est. 1RM: {calculateOneRepMax(fRM)} kg</span>
                                                     </div>
                                                 </div>
                                             );
@@ -678,7 +692,7 @@
                             <div className="space-y-6">
                                 {!activeSession ? (
                                     <div className="p-8 rounded-xl border text-center bg-zinc-900 border-zinc-800">
-                                        <p className="text-xs opacity-60">No live session active. Start a workout using the Setup Cycle tab!</p>
+                                        <p className="text-xs opacity-60">No live session active. Start a workout using the Cycle tab!</p>
                                     </div>
                                 ) : (
                                     <div className="space-y-6">
@@ -690,7 +704,7 @@
                                             </div>
                                             <div className="flex gap-2">
                                                 <button 
-                                                    onClick={() => openPlateCalculator(calculateTrainingMax(settings.fiveRepMaxes[activeSession.liftKey]))}
+                                                    onClick={() => openPlateCalculator(activeSession.allSets.find(s => s.completed === false)?.actualWeight || calculateTrainingMax(settings.fiveRepMaxes[activeSession.liftKey]))}
                                                     className="px-3.5 py-2 bg-zinc-800 text-zinc-300 text-xs rounded-xl font-bold flex items-center gap-1.5"
                                                 >
                                                     <Icon name="layers" className="w-4 h-4" /> Plates
@@ -713,7 +727,7 @@
                                                 return (
                                                     <div key={section} className="space-y-2">
                                                         <h4 className="text-[10px] uppercase font-bold tracking-widest text-indigo-400">
-                                                            {section === 'warmup' ? 'Warmup' : section === 'main' ? 'Working 5/3/1 sets' : 'Boring but big assistance'}
+                                                            {section === 'warmup' ? 'Warmup' : section === 'main' ? 'Working 5/3/1 sets' : `${settings.assistanceTemplate} Supplemental`}
                                                         </h4>
                                                         <div className="border border-zinc-800 rounded-xl overflow-hidden bg-zinc-900/40 shadow-sm">
                                                             <div className="grid grid-cols-12 gap-2 p-3 text-[10px] font-bold text-zinc-500 border-b border-zinc-800">
@@ -730,7 +744,7 @@
                                                                         </div>
                                                                         <div className="col-span-4 flex items-center justify-center space-x-1">
                                                                             <button onClick={() => handleSetChange(set.globalId, 'actualWeight', Math.max(0, set.actualWeight - settings.roundingStep))} className="p-1 px-2.5 rounded bg-zinc-800 text-zinc-300 font-bold">-</button>
-                                                                            <span className="font-bold w-12 text-center">{set.actualWeight}</span>
+                                                                            <span className="font-bold w-12 text-center">{set.actualWeight} kg</span>
                                                                             <button onClick={() => handleSetChange(set.globalId, 'actualWeight', set.actualWeight + settings.roundingStep)} className="p-1 px-2.5 rounded bg-zinc-800 text-zinc-300 font-bold">+</button>
                                                                         </div>
                                                                         <div className="col-span-4 flex items-center justify-center space-x-1">
@@ -802,7 +816,7 @@
                                                     <div className="flex flex-wrap gap-1.5 mt-2">
                                                         {log.sets && log.sets.filter(s => s.completed).map((s, idx) => (
                                                             <span key={idx} className="bg-zinc-950 text-[10px] px-2 py-0.5 rounded border border-zinc-800">
-                                                                {s.actualWeight}{settings.unit} &times; {s.actualReps}
+                                                                {s.actualWeight}kg &times; {s.actualReps}
                                                             </span>
                                                         ))}
                                                     </div>
@@ -834,7 +848,7 @@
                                                 <div key={lift.key} className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col justify-between shadow-inner">
                                                     <div>
                                                         <span className="text-[10px] uppercase font-bold text-indigo-400">{lift.name}</span>
-                                                        <h4 className="text-xl font-black mt-1">{current1RM} {settings.unit} <span className="text-xs font-normal opacity-50">Current Est</span></h4>
+                                                        <h4 className="text-xl font-black mt-1">{current1RM} kg <span className="text-xs font-normal opacity-50">Current Est</span></h4>
                                                     </div>
                                                     <div className="h-20 flex items-end space-x-1.5 mt-4 border-b border-zinc-800 pb-1">
                                                         {trend.length === 0 ? (
@@ -848,7 +862,7 @@
                                                                 return (
                                                                     <div key={idx} className="flex-1 bg-indigo-600 hover:bg-indigo-500 rounded-t h-full relative group transition-all" style={{ height: `${pct}%` }}>
                                                                         <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-black text-[8px] px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
-                                                                            {p.estimated1RM} {settings.unit}
+                                                                            {p.estimated1RM} kg
                                                                         </div>
                                                                     </div>
                                                                 );
@@ -871,23 +885,24 @@
                                         <h3 className="text-xl font-black flex items-center gap-1.5">
                                             <Icon name="settings" className="w-5 h-5 text-indigo-400" /> Preferences
                                         </h3>
-                                        <p className="text-xs opacity-70">Define metrics, standard barbell weight and calculate formulas.</p>
+                                        <p className="text-xs opacity-70">Define system properties, standard bar weights, and protocol modifications.</p>
                                     </div>
 
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                         <div>
-                                            <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-2">Weight Metric</label>
-                                            <div className="flex gap-2">
-                                                {['lbs', 'kg'].map(u => (
-                                                    <button key={u} onClick={() => setSettings({ ...settings, unit: u })} className={`flex-1 py-1.5 text-xs font-bold rounded-lg border ${settings.unit === u ? 'bg-indigo-600 border-indigo-500 text-white shadow-sm' : 'border-zinc-800 bg-zinc-950 text-zinc-400'}`}>
-                                                        {u.toUpperCase()}
-                                                    </button>
-                                                ))}
+                                            <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-2">Barbell Base Weight</label>
+                                            <div className="flex items-center space-x-2">
+                                                <input type="number" value={settings.barWeight} onChange={e => setSettings({ ...settings, barWeight: Number(e.target.value) })} className="w-full text-center py-1.5 text-xs font-bold bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-100" />
+                                                <span className="text-xs font-semibold text-zinc-500">kg</span>
                                             </div>
                                         </div>
                                         <div>
-                                            <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-2">Bar Weight ({settings.unit})</label>
-                                            <input type="number" value={settings.barWeight} onChange={e => setSettings({ ...settings, barWeight: Number(e.target.value) })} className="w-full text-center py-1.5 text-xs font-bold bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-100" />
+                                            <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-2">Rounding Scale Increment</label>
+                                            <select value={settings.roundingStep} onChange={e => setSettings({ ...settings, roundingStep: Number(e.target.value) })} className="w-full py-1.5 text-xs font-bold bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-100 px-2 focus:outline-none">
+                                                <option value="1">1.0 kg</option>
+                                                <option value="2.5">2.5 kg</option>
+                                                <option value="5">5.0 kg</option>
+                                            </select>
                                         </div>
                                         <div>
                                             <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-2">Training Max Constant</label>
@@ -901,11 +916,31 @@
                                         </div>
                                     </div>
 
+                                    {/* Assistance Variation Selection */}
+                                    <div className="pt-4 border-t border-zinc-800/50">
+                                        <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-2">Supplemental Assistance Template</label>
+                                        <div className="grid grid-cols-3 gap-2">
+                                            {[
+                                                { key: 'FSL', name: 'First Set Last (FSL 5x5)' },
+                                                { key: 'BBB', name: 'Boring But Big (BBB 5x10)' },
+                                                { key: 'None', name: 'No Assistance / Clear' }
+                                            ].map(template => (
+                                                <button
+                                                    key={template.key}
+                                                    onClick={() => setSettings({ ...settings, assistanceTemplate: template.key })}
+                                                    className={`py-2 text-xs font-bold rounded-lg border text-center ${settings.assistanceTemplate === template.key ? 'bg-indigo-600 border-indigo-500 text-white' : 'border-zinc-800 bg-zinc-950 text-zinc-400'}`}
+                                                >
+                                                    {template.name}
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+
                                     {/* 5RM Edit inputs */}
                                     <div className="pt-6 border-t border-zinc-800">
                                         <div className="mb-4">
                                             <h4 className="text-xs font-bold text-indigo-400 uppercase">Edit Current 5-Rep Max (5RM) Lifts</h4>
-                                            <p className="text-[10px] opacity-65 mt-0.5">The app calculates your 1RM using Epley's rule: $1\text{RM} = 5\text{RM} \times 1.1667$</p>
+                                            <p className="text-[10px] opacity-65 mt-0.5">The app calculates your 1RM using Epley's rule: 1RM = 5RM * 1.1667</p>
                                         </div>
                                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                             {Object.values(LIFTS).map(lift => {
@@ -925,8 +960,8 @@
                                                             className="w-full text-center py-1.5 font-bold text-xs bg-zinc-900 border border-zinc-800 rounded mt-2 text-zinc-100" 
                                                         />
                                                         <div className="text-[9px] opacity-65 mt-2 space-y-0.5 text-center">
-                                                            <span className="block">Est. 1RM: <strong>{calculated1RM} {settings.unit}</strong></span>
-                                                            <span className="block">TM ({settings.trainingMaxPercent}%): <strong>{calculatedTM} {settings.unit}</strong></span>
+                                                            <span className="block">Est. 1RM: <strong>{calculated1RM} kg</strong></span>
+                                                            <span className="block">TM ({settings.trainingMaxPercent}%): <strong>{calculatedTM} kg</strong></span>
                                                         </div>
                                                     </div>
                                                 );
@@ -944,7 +979,7 @@
                             <div className="bg-zinc-900 border border-zinc-800 text-zinc-100 rounded-2xl w-full max-w-md p-6 shadow-2xl">
                                 <div className="flex justify-between items-start mb-4">
                                     <h3 className="text-base font-bold flex items-center gap-1">
-                                        <Icon name="layers" className="w-4 h-4 text-indigo-400" /> Plate Layout
+                                        <Icon name="layers" className="w-4 h-4 text-indigo-400" /> Plate Layout (EACH side)
                                     </h3>
                                     <button onClick={() => setShowPlateModal(false)} className="text-xs bg-zinc-800 hover:bg-zinc-750 px-2 py-1 rounded">Close</button>
                                 </div>
@@ -955,17 +990,28 @@
                                         <div className="space-y-4">
                                             <div className="bg-zinc-950 text-center p-4 rounded-xl border border-zinc-800">
                                                 <span className="text-[10px] opacity-50 block">Target Weight:</span>
-                                                <h4 className="text-2xl font-black text-indigo-400">{plateCalcWeight} {settings.unit}</h4>
-                                                <span className="text-[9px] opacity-60">Bar: {settings.barWeight}{settings.unit} Included</span>
+                                                <h4 className="text-2xl font-black text-indigo-400">{plateCalcWeight} kg</h4>
+                                                <span className="text-[9px] opacity-60">Barbell Base Weight: {settings.barWeight} kg Included</span>
                                             </div>
                                             <div className="space-y-2">
                                                 {Object.entries(res.plates).map(([plate, qty]) => (
                                                     <div key={plate} className="flex justify-between items-center text-xs p-2.5 bg-zinc-950 rounded border border-zinc-800">
-                                                        <span>{plate} {settings.unit} Plate</span>
-                                                        <strong className="text-indigo-400">Qty: {qty} &times; each side</strong>
+                                                        <div className="flex items-center space-x-2">
+                                                            <span className={`w-2.5 h-2.5 rounded-full ${
+                                                                plate === '25' ? 'bg-red-500' :
+                                                                plate === '20' ? 'bg-blue-500' :
+                                                                plate === '15' ? 'bg-yellow-500' :
+                                                                plate === '10' ? 'bg-green-500' : 'bg-zinc-400'
+                                                            }`} />
+                                                            <span>{plate} kg Plate</span>
+                                                        </div>
+                                                        <strong className="text-indigo-400">Qty: {qty} &times;</strong>
                                                     </div>
                                                 ))}
                                             </div>
+                                            {res.remainder > 0 && (
+                                                <p className="text-[10px] text-amber-400 text-center">Uncalculable Remainder: {res.remainder.toFixed(2)} kg total</p>
+                                            )}
                                         </div>
                                     );
                                 })()}
