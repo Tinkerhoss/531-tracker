@@ -1,0 +1,975 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wendler 5/3/1 Companion</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    
+    <!-- React and Babel CDN for in-browser compilation -->
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <style>
+        html { scroll-behavior: smooth; }
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        .dark ::-webkit-scrollbar-thumb { background: #3f3f46; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb { background: #d4d4d8; border-radius: 4px; }
+    </style>
+</head>
+<body class="bg-zinc-950 text-zinc-100 transition-colors duration-300">
+    <div id="root">
+        <!-- Loader fallback while Babel compiles React code -->
+        <div class="min-h-screen flex flex-col items-center justify-center bg-zinc-950 text-zinc-100">
+            <div class="animate-spin rounded-full h-10 w-10 border-t-2 border-indigo-500 border-r-2 mb-4"></div>
+            <p class="text-sm font-bold tracking-wider text-zinc-400">LOADING WENDLER 5/3/1...</p>
+        </div>
+    </div>
+
+    <!-- React Application Logic -->
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- HAND-CRAFTED SVG ICONS FOR ZERO DEPENDENCY LOADING ---
+        const Icon = ({ name, className = "w-5 h-5" }) => {
+            const icons = {
+                dumbbell: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <path d="m6.5 6.5 11 11" /><path d="m21 21-1-1" /><path d="m3 3 1 1" /><path d="m18.5 5.5 3 3" /><path d="m15.5 8.5 3 3" /><path d="M5.5 18.5 8.5 15.5" /><path d="M2.5 21.5 5.5 18.5" /><path d="M14 2 2.2 13.8" /><path d="M21.8 10.2 10 22" />
+                    </svg>
+                ),
+                calendar: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <rect width="18" height="18" x="3" y="4" rx="2" ry="2" /><path d="M16 2v4" /><path d="M8 2v4" /><path d="M3 10h18" />
+                    </svg>
+                ),
+                history: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" /><path d="M3 3v5h5" /><path d="M12 7v5l4 2" />
+                    </svg>
+                ),
+                trending: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" /><polyline points="16 7 22 7 22 13" />
+                    </svg>
+                ),
+                settings: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <circle cx="12" cy="12" r="3" /><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+                    </svg>
+                ),
+                download: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" /><polyline points="7 10 12 15 17 10" /><line x1="12" x2="12" y1="15" y2="3" />
+                    </svg>
+                ),
+                copy: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <rect width="14" height="14" x="8" y="8" rx="2" ry="2" /><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2" />
+                    </svg>
+                ),
+                check: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <polyline points="20 6 9 17 4 12" />
+                    </svg>
+                ),
+                plus: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <path d="M5 12h14" /><path d="M12 5v14" />
+                    </svg>
+                ),
+                minus: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <path d="M5 12h14" />
+                    </svg>
+                ),
+                chevronRight: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <polyline points="9 18 15 12 9 6" />
+                    </svg>
+                ),
+                trash: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <path d="M3 6h18" /><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" /><path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+                    </svg>
+                ),
+                sparkles: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L21 12l-5.813-1.912a2 2 0 0 1-1.275-1.275L12 3Z" />
+                    </svg>
+                ),
+                award: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <circle cx="12" cy="8" r="7" /><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88" />
+                    </svg>
+                ),
+                sun: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <circle cx="12" cy="12" r="4" /><path d="M12 2v2" /><path d="M12 20v2" /><path d="m4.93 4.93 1.41 1.41" /><path d="m17.66 17.66 1.41 1.41" /><path d="M2 12h2" /><path d="M20 12h2" /><path d="m6.34 17.66-1.41 1.41" /><path d="m19.07 4.93-1.41 1.41" />
+                    </svg>
+                ),
+                moon: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+                    </svg>
+                ),
+                layers: (
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                        <polygon points="12 2 2 7 12 12 22 7 12 2" /><polygon points="2 17 12 22 22 17" /><polygon points="2 12 12 17 22 12" />
+                    </svg>
+                )
+            };
+            return icons[name] || null;
+        };
+
+        function App() {
+            // --- STATE VARIABLES ---
+            const [activeTab, setActiveTab] = useState('dashboard');
+            const [darkMode, setDarkMode] = useState(true);
+
+            // User Settings State (Local storage synced)
+            const [settings, setSettings] = useState(() => {
+                const saved = localStorage.getItem('wendler_standalone_settings');
+                return saved ? JSON.parse(saved) : {
+                    unit: 'lbs', 
+                    barWeight: 45, 
+                    roundingStep: 5, 
+                    trainingMaxPercent: 90, 
+                    plates: [45, 35, 25, 10, 5, 2.5], 
+                    oneRepMaxes: {
+                        press: 135,
+                        deadlift: 315,
+                        bench: 225,
+                        squat: 315
+                    },
+                    assistanceTemplate: 'BBB', 
+                    cycleNumber: 1
+                };
+            });
+
+            // Workout Logs
+            const [logs, setLogs] = useState(() => {
+                const saved = localStorage.getItem('wendler_standalone_logs');
+                return saved ? JSON.parse(saved) : [];
+            });
+            
+            // Current active workout session tracking
+            const [activeSession, setActiveSession] = useState(null);
+            
+            // Plate Visualizer state
+            const [plateCalcWeight, setPlateCalcWeight] = useState(null);
+            const [showPlateModal, setShowPlateModal] = useState(false);
+
+            // Rest Timer State
+            const [timerDuration, setTimerDuration] = useState(90); 
+            const [timerSecondsLeft, setTimerSecondsLeft] = useState(0);
+            const [timerRunning, setTimerRunning] = useState(false);
+            const timerRef = useRef(null);
+
+            // General Notification feedback
+            const [notification, setNotification] = useState(null);
+
+            const LIFTS = {
+                press: { name: 'Overhead Press', key: 'press', abbreviation: 'OHP' },
+                deadlift: { name: 'Deadlift', key: 'deadlift', abbreviation: 'DL' },
+                bench: { name: 'Bench Press', key: 'bench', abbreviation: 'BP' },
+                squat: { name: 'Squat', key: 'squat', abbreviation: 'SQ' }
+            };
+
+            const WEEKS_INFO = {
+                1: { name: 'Week 1: 3x5 (Accumulation)', description: 'Warmup, then working sets of 5, 5, and 5+ reps' },
+                2: { name: 'Week 2: 3x3 (Intensification)', description: 'Warmup, then working sets of 3, 3, and 3+ reps' },
+                3: { name: 'Week 3: 5/3/1 (Realization)', description: 'Warmup, then working sets of 5, 3, and 1+ reps' },
+                4: { name: 'Week 4: Deload (Recovery)', description: 'Recovery cycle with light weights. No AMRAP sets.' }
+            };
+
+            const WENDLER_PERCENTAGES = {
+                1: [0.65, 0.75, 0.85],
+                2: [0.70, 0.80, 0.90],
+                3: [0.75, 0.85, 0.95],
+                4: [0.40, 0.50, 0.60]
+            };
+
+            const WENDLER_REPS = {
+                1: ['5', '5', '5+'],
+                2: ['3', '3', '3+'],
+                3: ['5', '3', '1+'],
+                4: ['5', '5', '5']
+            };
+
+            const WARMUP_PERCENTAGES = [0.40, 0.50, 0.60];
+            const WARMUP_REPS = [5, 5, 3];
+
+            // Trigger light/dark mode DOM sync
+            useEffect(() => {
+                if (darkMode) {
+                    document.documentElement.classList.add('dark');
+                    document.body.className = "bg-zinc-950 text-zinc-100 transition-colors duration-300";
+                } else {
+                    document.documentElement.classList.remove('dark');
+                    document.body.className = "bg-slate-50 text-slate-900 transition-colors duration-300";
+                }
+            }, [darkMode]);
+
+            // Save to Local Storage updates
+            useEffect(() => {
+                localStorage.setItem('wendler_standalone_settings', JSON.stringify(settings));
+            }, [settings]);
+
+            useEffect(() => {
+                localStorage.setItem('wendler_standalone_logs', JSON.stringify(logs));
+            }, [logs]);
+
+            // --- NOTIFICATION HELPER ---
+            const triggerNotification = (message, type = 'success') => {
+                setNotification({ message, type });
+                setTimeout(() => {
+                    setNotification(null);
+                }, 3500);
+            };
+
+            // --- TIMER LOGIC ---
+            useEffect(() => {
+                if (timerRunning && timerSecondsLeft > 0) {
+                    timerRef.current = setTimeout(() => {
+                        setTimerSecondsLeft(prev => prev - 1);
+                    }, 1000);
+                } else if (timerSecondsLeft === 0 && timerRunning) {
+                    setTimerRunning(false);
+                    if (typeof window !== 'undefined' && window.speechSynthesis) {
+                        const utterance = new SpeechSynthesisUtterance("Rest complete. Next set!");
+                        utterance.rate = 1.1;
+                        window.speechSynthesis.speak(utterance);
+                    }
+                    triggerNotification("Rest time is up! Get ready.", "info");
+                }
+                return () => clearTimeout(timerRef.current);
+            }, [timerRunning, timerSecondsLeft]);
+
+            const startTimer = (seconds = timerDuration) => {
+                setTimerSecondsLeft(seconds);
+                setTimerRunning(true);
+            };
+
+            const pauseTimer = () => setTimerRunning(false);
+            const resetTimer = () => {
+                setTimerSecondsLeft(timerDuration);
+                setTimerRunning(false);
+            };
+
+            // --- WENDLER CALCULATOR ---
+            const calculateTrainingMax = (oneRepMax) => {
+                const rawTM = oneRepMax * (settings.trainingMaxPercent / 100);
+                return Math.round(rawTM / settings.roundingStep) * settings.roundingStep;
+            };
+
+            const getCalculatedWeight = (liftKey, week, isWarmup, setIndex) => {
+                const oneRepMax = settings.oneRepMaxes[liftKey] || 100;
+                const trainingMax = calculateTrainingMax(oneRepMax);
+                const percentage = isWarmup ? WARMUP_PERCENTAGES[setIndex] : WENDLER_PERCENTAGES[week][setIndex];
+                return Math.round((trainingMax * percentage) / settings.roundingStep) * settings.roundingStep;
+            };
+
+            const getWorkoutsForWeek = (week) => {
+                return Object.values(LIFTS).map(lift => {
+                    const trainingMax = calculateTrainingMax(settings.oneRepMaxes[lift.key]);
+                    const warmupSets = WARMUP_PERCENTAGES.map((pct, idx) => ({
+                        type: 'warmup',
+                        percentage: pct * 100,
+                        targetReps: WARMUP_REPS[idx],
+                        targetWeight: getCalculatedWeight(lift.key, week, true, idx),
+                        completed: false,
+                        actualReps: WARMUP_REPS[idx],
+                        actualWeight: getCalculatedWeight(lift.key, week, true, idx)
+                    }));
+
+                    const mainSets = WENDLER_PERCENTAGES[week].map((pct, idx) => {
+                        const repsString = WENDLER_REPS[week][idx];
+                        const isAmrap = repsString.includes('+');
+                        const targetReps = parseInt(repsString, 10);
+                        const weight = getCalculatedWeight(lift.key, week, false, idx);
+                        return {
+                            type: 'main',
+                            percentage: Math.round(pct * 100),
+                            targetReps,
+                            isAmrap,
+                            targetWeight: weight,
+                            completed: false,
+                            actualReps: targetReps,
+                            actualWeight: weight
+                        };
+                    });
+
+                    let assistanceSets = [];
+                    if (settings.assistanceTemplate === 'BBB') {
+                        const assistanceWeight = Math.round((trainingMax * 0.50) / settings.roundingStep) * settings.roundingStep;
+                        for (let i = 1; i <= 5; i++) {
+                            assistanceSets.push({
+                                type: 'assistance',
+                                name: `${lift.name} (BBB)`,
+                                targetReps: 10,
+                                targetWeight: assistanceWeight,
+                                completed: false,
+                                actualReps: 10,
+                                actualWeight: assistanceWeight
+                            });
+                        }
+                    }
+
+                    return {
+                        liftKey: lift.key,
+                        liftName: lift.name,
+                        week,
+                        warmupSets,
+                        mainSets,
+                        assistanceSets,
+                        completed: false
+                    };
+                });
+            };
+
+            // --- SESSION ACTIONS ---
+            const startWorkoutSession = (workoutTemplate) => {
+                const clonedSession = JSON.parse(JSON.stringify(workoutTemplate));
+                clonedSession.startTime = new Date().toISOString();
+                
+                let allSets = [];
+                clonedSession.warmupSets.forEach((set, index) => {
+                    allSets.push({ ...set, globalId: `warmup-${index}`, index, section: 'warmup' });
+                });
+                clonedSession.mainSets.forEach((set, index) => {
+                    allSets.push({ ...set, globalId: `main-${index}`, index, section: 'main' });
+                });
+                clonedSession.assistanceSets.forEach((set, index) => {
+                    allSets.push({ ...set, globalId: `assistance-${index}`, index, section: 'assistance' });
+                });
+
+                clonedSession.allSets = allSets;
+                setActiveSession(clonedSession);
+                setActiveTab('active-workout');
+                triggerNotification(`Started ${workoutTemplate.liftName} workout! Let's crush this.`);
+            };
+
+            const handleSetToggleComplete = (globalId) => {
+                if (!activeSession) return;
+                const updatedSets = activeSession.allSets.map(set => {
+                    if (set.globalId === globalId) {
+                        const nextStatus = !set.completed;
+                        if (nextStatus) startTimer();
+                        return { ...set, completed: nextStatus };
+                    }
+                    return set;
+                });
+                setActiveSession({ ...activeSession, allSets: updatedSets });
+            };
+
+            const handleSetChange = (globalId, field, value) => {
+                if (!activeSession) return;
+                const updatedSets = activeSession.allSets.map(set => {
+                    if (set.globalId === globalId) return { ...set, [field]: Number(value) };
+                    return set;
+                });
+                setActiveSession({ ...activeSession, allSets: updatedSets });
+            };
+
+            const finishActiveWorkout = () => {
+                if (!activeSession) return;
+                const completedSets = activeSession.allSets.filter(s => s.completed);
+                if (completedSets.length === 0) {
+                    if (!confirm("You haven't completed any sets! Finish anyway?")) return;
+                }
+
+                const endTime = new Date().toISOString();
+                const mainSets = activeSession.allSets.filter(s => s.section === 'main');
+                const amrapSet = mainSets.find(s => s.isAmrap);
+                let amrapAchieved = null;
+                let newEst1RM = null;
+
+                if (amrapSet && amrapSet.completed) {
+                    amrapAchieved = {
+                        weight: Number(amrapSet.actualWeight),
+                        reps: Number(amrapSet.actualReps)
+                    };
+                    newEst1RM = Math.round((amrapAchieved.weight * (1 + amrapAchieved.reps / 30)) * 10) / 10;
+                }
+
+                const completedWorkoutLog = {
+                    id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()),
+                    liftKey: activeSession.liftKey,
+                    liftName: activeSession.liftName,
+                    week: activeSession.week,
+                    cycle: settings.cycleNumber,
+                    date: endTime,
+                    sets: activeSession.allSets.map(s => ({
+                        section: s.section,
+                        targetWeight: s.targetWeight,
+                        targetReps: s.targetReps,
+                        actualWeight: Number(s.actualWeight),
+                        actualReps: Number(s.actualReps),
+                        completed: s.completed,
+                        isAmrap: s.isAmrap || false
+                    })),
+                    amrapAchieved,
+                    estimated1RM: newEst1RM
+                };
+
+                setLogs([completedWorkoutLog, ...logs]);
+                setActiveSession(null);
+                setActiveTab('logs');
+                triggerNotification("Workout logged successfully!");
+            };
+
+            const deleteLogEntry = (id) => {
+                if (!confirm("Are you sure you want to delete this log?")) return;
+                setLogs(logs.filter(log => log.id !== id));
+                triggerNotification("Log entry deleted.");
+            };
+
+            // --- PLATE CALCULATOR ---
+            const calculatePlatesNeeded = (targetWeight) => {
+                const bar = settings.barWeight;
+                const remainingWeight = targetWeight - bar;
+                if (remainingWeight <= 0) return { error: 'Weight is below bar weight' };
+
+                const oneSideWeight = remainingWeight / 2;
+                let weightLeft = oneSideWeight;
+                const plateCount = {};
+                const sortedPlates = [...settings.plates].sort((a, b) => b - a);
+
+                sortedPlates.forEach(plate => {
+                    const qty = Math.floor(weightLeft / plate);
+                    if (qty > 0) {
+                        plateCount[plate] = qty;
+                        weightLeft -= (qty * plate);
+                    }
+                });
+
+                return { plates: plateCount, remainder: weightLeft * 2 };
+            };
+
+            const openPlateCalculator = (weight) => {
+                setPlateCalcWeight(weight);
+                setShowPlateModal(true);
+            };
+
+            // --- SPREADSHEET EXPORTS ---
+            const getGoogleSheetsTabularData = () => {
+                let output = `Date\tCycle\tWeek\tLift\tSet Details (Weight x Reps Completed)\tAMRAP Achieved\tEst. 1RM (${settings.unit})\n`;
+                logs.forEach(log => {
+                    const dateFormatted = new Date(log.date).toLocaleDateString();
+                    const completedSetsStr = log.sets
+                        .filter(s => s.completed)
+                        .map(s => `${s.actualWeight}${settings.unit} x ${s.actualReps}`)
+                        .join(', ');
+                    const amrapStr = log.amrapAchieved ? `${log.amrapAchieved.weight} x ${log.amrapAchieved.reps}` : "N/A";
+                    const est1RMStr = log.estimated1RM ? log.estimated1RM : "N/A";
+                    output += `${dateFormatted}\t${log.cycle}\tWeek ${log.week}\t${log.liftName}\t${completedSetsStr}\t${amrapStr}\t${est1RMStr}\n`;
+                });
+                return output;
+            };
+
+            const handleCopyForGoogleSheets = () => {
+                const rawTSV = getGoogleSheetsTabularData();
+                const textarea = document.createElement('textarea');
+                textarea.value = rawTSV;
+                document.body.appendChild(textarea);
+                textarea.select();
+                document.execCommand('copy');
+                document.body.removeChild(textarea);
+                triggerNotification("Copied! Open Google Sheets, select cell A1, and press Ctrl+V.");
+            };
+
+            const handleCSVDownload = () => {
+                const csvContent = getGoogleSheetsTabularData().replace(/\t/g, ",");
+                const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement("a");
+                link.setAttribute("href", url);
+                link.setAttribute("download", `wendler_cycle_${settings.cycleNumber}_logs.csv`);
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+            };
+
+            const handleIncrementCycle = () => {
+                if (!confirm("Start next cycle? This advances your cycle number and adds +5 lbs/2.5kg to upper body lifts, and +10 lbs/5kg to squats/deadlifts.")) return;
+                const inc = settings.unit === 'lbs' ? { upper: 5, lower: 10 } : { upper: 2.5, lower: 5 };
+                setSettings({
+                    ...settings,
+                    cycleNumber: settings.cycleNumber + 1,
+                    oneRepMaxes: {
+                        press: settings.oneRepMaxes.press + inc.upper,
+                        bench: settings.oneRepMaxes.bench + inc.upper,
+                        deadlift: settings.oneRepMaxes.deadlift + inc.lower,
+                        squat: settings.oneRepMaxes.squat + inc.lower
+                    }
+                });
+                triggerNotification(`Welcome to Cycle ${settings.cycleNumber + 1}! Maxes increased!`);
+            };
+
+            return (
+                <div className="min-h-screen pb-24">
+                    {/* Top Header */}
+                    <header className={`border-b sticky top-0 z-40 px-4 py-3 ${darkMode ? 'border-zinc-800 bg-zinc-900/85' : 'border-slate-200 bg-white/85'} backdrop-blur-md`}>
+                        <div className="max-w-5xl mx-auto flex items-center justify-between">
+                            <div className="flex items-center space-x-3">
+                                <div className="bg-indigo-600 text-white p-2 rounded-xl shadow-lg">
+                                    <Icon name="dumbbell" className="h-6 w-6" />
+                                </div>
+                                <div>
+                                    <h1 className="font-extrabold text-lg tracking-tight">Wendler 5/3/1 Companion</h1>
+                                    <p className="text-xs opacity-75">Cycle {settings.cycleNumber} &bull; Personal Companion</p>
+                                </div>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                                <span className="text-[10px] uppercase font-bold bg-zinc-800/80 text-zinc-400 px-2.5 py-1 rounded border border-zinc-700/50">
+                                    Offline Storage Ready
+                                </span>
+                                <button 
+                                    onClick={() => setDarkMode(!darkMode)}
+                                    className="p-2 rounded-lg border border-zinc-700 hover:bg-zinc-800 text-amber-400"
+                                >
+                                    {darkMode ? <Icon name="sun" className="w-4 h-4" /> : <Icon name="moon" className="w-4 h-4" />}
+                                </button>
+                            </div>
+                        </div>
+                    </header>
+
+                    {/* Notification Alert Box */}
+                    {notification && (
+                        <div className="fixed bottom-24 left-1/2 -translate-x-1/2 z-50">
+                            <div className="bg-indigo-600 text-white shadow-xl rounded-xl px-5 py-3 border border-indigo-400 text-sm font-semibold flex items-center space-x-2">
+                                <Icon name="sparkles" className="w-4 h-4" />
+                                <span>{notification.message}</span>
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Timer Banner */}
+                    {timerSecondsLeft > 0 && (
+                        <div className="bg-indigo-950/90 border-b border-indigo-900 text-indigo-200 py-2 px-4 flex items-center justify-between sticky top-[60px] z-30">
+                            <span className="text-xs font-bold">Resting: {timerSecondsLeft} seconds remaining</span>
+                            <div className="flex space-x-1">
+                                <button onClick={() => setTimerRunning(!timerRunning)} className="px-2 py-0.5 bg-indigo-600 text-white text-[10px] rounded">
+                                    {timerRunning ? 'Pause' : 'Resume'}
+                                </button>
+                                <button onClick={resetTimer} className="px-2 py-0.5 bg-zinc-600 text-white text-[10px] rounded">Skip</button>
+                            </div>
+                        </div>
+                    )}
+
+                    <main className="max-w-5xl mx-auto px-4 py-6">
+                        {/* TAB 1: SETUP/CYCLE */}
+                        {activeTab === 'dashboard' && (
+                            <div className="space-y-6">
+                                <div className={`p-6 rounded-2xl border ${darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-slate-200'} relative overflow-hidden shadow-md`}>
+                                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                                        <div>
+                                            <span className="text-xs font-bold uppercase bg-indigo-600 text-white px-2.5 py-0.5 rounded-full">Jim Wendler Protocol</span>
+                                            <h2 className="text-2xl font-black mt-2">Cycle Progression & Setup</h2>
+                                            <p className="text-xs opacity-70 mt-1">Based on Training Max of {settings.trainingMaxPercent}% of actual 1-Rep Max benchmarks.</p>
+                                        </div>
+                                        <button 
+                                            onClick={handleIncrementCycle}
+                                            className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-lg shadow-indigo-600/10"
+                                        >
+                                            <Icon name="plus" className="w-4 h-4" /> Start Next Cycle
+                                        </button>
+                                    </div>
+
+                                    {/* Weights Summary Grid */}
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-6 border-t border-zinc-800">
+                                        {Object.values(LIFTS).map(lift => {
+                                            const oRM = settings.oneRepMaxes[lift.key];
+                                            return (
+                                                <div key={lift.key} className="p-3.5 rounded-xl bg-zinc-950/40 border border-zinc-800/80">
+                                                    <p className="text-[10px] font-extrabold text-indigo-400 uppercase">{lift.name}</p>
+                                                    <h4 className="text-lg font-black mt-1">{calculateTrainingMax(oRM)} {settings.unit} <span className="text-[10px] font-normal opacity-50">TM</span></h4>
+                                                    <span className="text-[10px] opacity-60 block">1RM Benchmark: {oRM}</span>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+
+                                {/* Weeks Progression selection */}
+                                <div>
+                                    <h3 className="text-sm font-bold mb-3 flex items-center gap-1.5">
+                                        <Icon name="calendar" className="w-4 h-4 text-indigo-400" /> Choose Your Current Week Workout
+                                    </h3>
+                                    <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                                        {[1, 2, 3, 4].map(w => (
+                                            <div key={w} className={`p-4 rounded-xl border flex flex-col justify-between ${darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-slate-200'}`}>
+                                                <div>
+                                                    <div className="flex justify-between items-center">
+                                                        <span className="font-extrabold text-base">Week {w}</span>
+                                                        <span className="text-[10px] bg-indigo-500/10 text-indigo-400 px-2 py-0.5 rounded-full font-bold">
+                                                            {w === 1 ? '3x5' : w === 2 ? '3x3' : w === 3 ? '5/3/1' : 'Deload'}
+                                                        </span>
+                                                    </div>
+                                                    <p className="text-xs opacity-75 mt-2">{WEEKS_INFO[w].description}</p>
+                                                </div>
+                                                <div className="mt-4 pt-3 border-t border-zinc-800/40 space-y-2">
+                                                    {Object.values(LIFTS).map(lift => {
+                                                        const templ = getWorkoutsForWeek(w).find(x => x.liftKey === lift.key);
+                                                        return (
+                                                            <button
+                                                                key={lift.key}
+                                                                onClick={() => startWorkoutSession(templ)}
+                                                                className="w-full text-left text-xs p-2 rounded-lg bg-zinc-950/40 hover:bg-indigo-950/40 border border-zinc-800 flex justify-between items-center transition-all"
+                                                            >
+                                                                <span className="font-bold">{lift.abbreviation} Set Targets</span>
+                                                                <Icon name="chevronRight" className="w-3.5 h-3.5 text-indigo-400" />
+                                                            </button>
+                                                        );
+                                                    })}
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB 2: PLAY ACTIVE WORKOUT */}
+                        {activeTab === 'active-workout' && (
+                            <div className="space-y-6">
+                                {!activeSession ? (
+                                    <div className="p-8 rounded-xl border text-center bg-zinc-900 border-zinc-800">
+                                        <p className="text-xs opacity-60">No live session active. Start a workout using the Setup Cycle tab!</p>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        <div className={`p-6 rounded-2xl border ${darkMode ? 'bg-zinc-900 border-zinc-800' : 'bg-white border-slate-200'} flex flex-col md:flex-row md:items-center justify-between gap-4`}>
+                                            <div>
+                                                <span className="text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 px-2.5 py-0.5 rounded-full font-bold uppercase">Active Session</span>
+                                                <h2 className="text-2xl font-black mt-2">{activeSession.liftName}</h2>
+                                                <p className="text-xs opacity-70">Cycle {settings.cycleNumber} &bull; Week {activeSession.week}</p>
+                                            </div>
+                                            <div className="flex gap-2">
+                                                <button 
+                                                    onClick={() => openPlateCalculator(calculateTrainingMax(settings.oneRepMaxes[activeSession.liftKey]))}
+                                                    className="px-3.5 py-2 bg-zinc-800 text-zinc-300 text-xs rounded-xl font-bold flex items-center gap-1.5"
+                                                >
+                                                    <Icon name="layers" className="w-4 h-4" /> Plates
+                                                </button>
+                                                <button 
+                                                    onClick={finishActiveWorkout}
+                                                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs rounded-xl font-bold flex items-center gap-1.5"
+                                                >
+                                                    <Icon name="check" className="w-4 h-4" /> Save Logs
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        {/* Sets list */}
+                                        <div className="space-y-4">
+                                            {['warmup', 'main', 'assistance'].map(section => {
+                                                const sectionSets = activeSession.allSets.filter(s => s.section === section);
+                                                if (sectionSets.length === 0) return null;
+
+                                                return (
+                                                    <div key={section} className="space-y-2">
+                                                        <h4 className="text-[10px] uppercase font-bold tracking-widest text-indigo-400">
+                                                            {section === 'warmup' ? 'Warmup' : section === 'main' ? 'Working 5/3/1 sets' : 'Boring but big assistance'}
+                                                        </h4>
+                                                        <div className="border border-zinc-800 rounded-xl overflow-hidden bg-zinc-900/40 shadow-sm">
+                                                            <div className="grid grid-cols-12 gap-2 p-3 text-[10px] font-bold text-zinc-500 border-b border-zinc-800">
+                                                                <div className="col-span-2 text-center">Set</div>
+                                                                <div className="col-span-4 text-center">Weight</div>
+                                                                <div className="col-span-4 text-center">Reps</div>
+                                                                <div className="col-span-2 text-center">Check</div>
+                                                            </div>
+                                                            <div className="divide-y divide-zinc-800/60">
+                                                                {sectionSets.map((set, i) => (
+                                                                    <div key={set.globalId} className={`grid grid-cols-12 gap-2 p-3 items-center text-xs ${set.completed ? 'bg-emerald-500/5 text-emerald-400' : ''}`}>
+                                                                        <div className="col-span-2 text-center font-bold">
+                                                                            {section === 'warmup' ? `W${i+1}` : section === 'main' ? `M${i+1}` : `A${i+1}`}
+                                                                        </div>
+                                                                        <div className="col-span-4 flex items-center justify-center space-x-1">
+                                                                            <button onClick={() => handleSetChange(set.globalId, 'actualWeight', Math.max(0, set.actualWeight - settings.roundingStep))} className="p-1 px-2.5 rounded bg-zinc-800 text-zinc-300 font-bold">-</button>
+                                                                            <span className="font-bold w-12 text-center">{set.actualWeight}</span>
+                                                                            <button onClick={() => handleSetChange(set.globalId, 'actualWeight', set.actualWeight + settings.roundingStep)} className="p-1 px-2.5 rounded bg-zinc-800 text-zinc-300 font-bold">+</button>
+                                                                        </div>
+                                                                        <div className="col-span-4 flex items-center justify-center space-x-1">
+                                                                            <button onClick={() => handleSetChange(set.globalId, 'actualReps', Math.max(0, set.actualReps - 1))} className="p-1 px-2.5 rounded bg-zinc-800 text-zinc-300 font-bold">-</button>
+                                                                            <span className="font-bold w-8 text-center">{set.actualReps}{set.isAmrap && '+'}</span>
+                                                                            <button onClick={() => handleSetChange(set.globalId, 'actualReps', set.actualReps + 1)} className="p-1 px-2.5 rounded bg-zinc-800 text-zinc-300 font-bold">+</button>
+                                                                        </div>
+                                                                        <div className="col-span-2 text-center">
+                                                                            <button 
+                                                                                onClick={() => handleSetToggleComplete(set.globalId)}
+                                                                                className={`w-7 h-7 rounded-full border flex items-center justify-center mx-auto ${set.completed ? 'bg-emerald-600 border-emerald-500 text-white' : 'border-zinc-700 bg-zinc-950 text-transparent'}`}
+                                                                            >
+                                                                                ✓
+                                                                            </button>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                );
+                                            })}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+                        )}
+
+                        {/* TAB 3: LOGS & SPREADSHEET EXPORT */}
+                        {activeTab === 'logs' && (
+                            <div className="space-y-6">
+                                <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-md">
+                                    <h3 className="text-xl font-black flex items-center gap-1.5">
+                                        <Icon name="download" className="w-5 h-5 text-indigo-400" /> Google Sheets Portal
+                                    </h3>
+                                    <p className="text-xs opacity-70 mt-1">Export your structured logs directly to copy-paste into spreadsheets effortlessly.</p>
+                                    
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                                        <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
+                                            <h4 className="text-xs font-bold text-indigo-400 uppercase">1-Click Google Sheets Export</h4>
+                                            <p className="text-[11px] opacity-75">Formats date, cycle, sets, reps, and calculated 1-RMs into Tab-Separated columns. Just copy, select cell A1 in Google Sheets, and paste!</p>
+                                            <button onClick={handleCopyForGoogleSheets} className="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold rounded-lg mt-2 transition-all">
+                                                Copy Tabular Data
+                                            </button>
+                                        </div>
+                                        <div className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 space-y-2">
+                                            <h4 className="text-xs font-bold text-emerald-400 uppercase">Offline CSV File download</h4>
+                                            <p className="text-[11px] opacity-75">Downloads standard comma-separated values (CSV) log file compatible with Microsoft Excel, Python, or standard backups.</p>
+                                            <button onClick={handleCSVDownload} className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg mt-2 transition-all">
+                                                Download .CSV file
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                {/* Logs list */}
+                                <div className="space-y-3">
+                                    <h3 className="text-sm font-bold flex items-center gap-1.5">
+                                        <Icon name="history" className="w-4 h-4 text-indigo-400" /> Workout History
+                                    </h3>
+                                    {logs.length === 0 ? (
+                                        <p className="text-xs opacity-60 text-center py-6 bg-zinc-900 rounded-xl border border-zinc-800">No logs found yet.</p>
+                                    ) : (
+                                        logs.map(log => (
+                                            <div key={log.id} className="p-4 rounded-xl bg-zinc-900 border border-zinc-800 flex justify-between items-center gap-4 shadow-sm">
+                                                <div>
+                                                    <span className="text-[9px] uppercase font-bold text-indigo-400">Cycle {log.cycle} &bull; Week {log.week}</span>
+                                                    <h4 className="text-base font-black mt-0.5">{log.liftName}</h4>
+                                                    <div className="flex flex-wrap gap-1.5 mt-2">
+                                                        {log.sets && log.sets.filter(s => s.completed).map((s, idx) => (
+                                                            <span key={idx} className="bg-zinc-950 text-[10px] px-2 py-0.5 rounded border border-zinc-800">
+                                                                {s.actualWeight}{settings.unit} &times; {s.actualReps}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                                <button onClick={() => deleteLogEntry(log.id)} className="text-red-400 hover:text-red-500 p-2 hover:bg-red-500/10 rounded-lg">
+                                                    <Icon name="trash" className="w-4 h-4" />
+                                                </button>
+                                            </div>
+                                        ))
+                                    )}
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB 4: ANALYTICS */}
+                        {activeTab === 'analytics' && (
+                            <div className="space-y-6">
+                                <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 shadow-md">
+                                    <h3 className="text-lg font-bold flex items-center gap-1.5">
+                                        <Icon name="trending" className="w-5 h-5 text-indigo-400" /> Estimated 1-Rep Max Trends
+                                    </h3>
+                                    <p className="text-xs opacity-75 mt-1">Calculations based on logs and AMRAP performance metrics using the Epley formulation.</p>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-6">
+                                        {Object.values(LIFTS).map(lift => {
+                                            const trend = logs.filter(l => l.liftKey === lift.key && l.estimated1RM).reverse();
+                                            const current1RM = trend[trend.length - 1]?.estimated1RM || settings.oneRepMaxes[lift.key];
+                                            return (
+                                                <div key={lift.key} className="p-4 rounded-xl bg-zinc-950 border border-zinc-800 flex flex-col justify-between shadow-inner">
+                                                    <div>
+                                                        <span className="text-[10px] uppercase font-bold text-indigo-400">{lift.name}</span>
+                                                        <h4 className="text-xl font-black mt-1">{current1RM} {settings.unit} <span className="text-xs font-normal opacity-50">Current Est</span></h4>
+                                                    </div>
+                                                    <div className="h-20 flex items-end space-x-1.5 mt-4 border-b border-zinc-800 pb-1">
+                                                        {trend.length === 0 ? (
+                                                            <span className="text-[10px] opacity-50 italic text-center w-full block py-2">No data logged</span>
+                                                        ) : (
+                                                            trend.map((p, idx) => {
+                                                                const max = Math.max(...trend.map(t => t.estimated1RM));
+                                                                const min = Math.min(...trend.map(t => t.estimated1RM));
+                                                                const range = max - min || 1;
+                                                                const pct = ((p.estimated1RM - min) / range) * 80 + 20;
+                                                                return (
+                                                                    <div key={idx} className="flex-1 bg-indigo-600 hover:bg-indigo-500 rounded-t h-full relative group transition-all" style={{ height: `${pct}%` }}>
+                                                                        <div className="absolute bottom-full mb-1 left-1/2 -translate-x-1/2 bg-black text-[8px] px-1 py-0.5 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                                                                            {p.estimated1RM} {settings.unit}
+                                                                        </div>
+                                                                    </div>
+                                                                );
+                                                            })
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* TAB 5: SYSTEM CONFIGS */}
+                        {activeTab === 'settings' && (
+                            <div className="space-y-6">
+                                <div className="p-6 rounded-2xl bg-zinc-900 border border-zinc-800 space-y-6 shadow-md">
+                                    <div>
+                                        <h3 className="text-xl font-black flex items-center gap-1.5">
+                                            <Icon name="settings" className="w-5 h-5 text-indigo-400" /> Preferences
+                                        </h3>
+                                        <p className="text-xs opacity-70">Define metrics, standard barbell weight and calculate formulas.</p>
+                                    </div>
+
+                                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                                        <div>
+                                            <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-2">Weight Metric</label>
+                                            <div className="flex gap-2">
+                                                {['lbs', 'kg'].map(u => (
+                                                    <button key={u} onClick={() => setSettings({ ...settings, unit: u })} className={`flex-1 py-1.5 text-xs font-bold rounded-lg border ${settings.unit === u ? 'bg-indigo-600 border-indigo-500 text-white shadow-sm' : 'border-zinc-800 bg-zinc-950 text-zinc-400'}`}>
+                                                        {u.toUpperCase()}
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-2">Bar Weight ({settings.unit})</label>
+                                            <input type="number" value={settings.barWeight} onChange={e => setSettings({ ...settings, barWeight: Number(e.target.value) })} className="w-full text-center py-1.5 text-xs font-bold bg-zinc-950 border border-zinc-800 rounded-lg text-zinc-100" />
+                                        </div>
+                                        <div>
+                                            <label className="text-[10px] font-bold uppercase text-zinc-400 block mb-2">Training Max Constant</label>
+                                            <div className="flex gap-2">
+                                                {[85, 90].map(pct => (
+                                                    <button key={pct} onClick={() => setSettings({ ...settings, trainingMaxPercent: pct })} className={`flex-1 py-1.5 text-xs font-bold rounded-lg border ${settings.trainingMaxPercent === pct ? 'bg-indigo-600 border-indigo-500 text-white shadow-sm' : 'border-zinc-800 bg-zinc-950 text-zinc-400'}`}>
+                                                        {pct}%
+                                                    </button>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    {/* 1RM Edit inputs */}
+                                    <div className="pt-6 border-t border-zinc-800">
+                                        <h4 className="text-xs font-bold text-indigo-400 uppercase mb-4">Edit Current 1-Rep Max benchmarks</h4>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                            {Object.values(LIFTS).map(lift => (
+                                                <div key={lift.key} className="p-3.5 rounded-xl bg-zinc-950 border border-zinc-800 shadow-inner">
+                                                    <label className="text-[10px] font-bold uppercase block text-zinc-500">{lift.name}</label>
+                                                    <input 
+                                                        type="number" 
+                                                        value={settings.oneRepMaxes[lift.key]} 
+                                                        onChange={e => {
+                                                            const oRMs = { ...settings.oneRepMaxes, [lift.key]: Number(e.target.value) };
+                                                            setSettings({ ...settings, oneRepMaxes: oRMs });
+                                                        }} 
+                                                        className="w-full text-center py-1.5 font-bold text-xs bg-zinc-900 border border-zinc-800 rounded mt-2 text-zinc-100" 
+                                                    />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        )}
+                    </main>
+
+                    {/* PLATE MODAL */}
+                    {showPlateModal && (
+                        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
+                            <div className="bg-zinc-900 border border-zinc-800 text-zinc-100 rounded-2xl w-full max-w-md p-6 shadow-2xl">
+                                <div className="flex justify-between items-start mb-4">
+                                    <h3 className="text-base font-bold flex items-center gap-1">
+                                        <Icon name="layers" className="w-4 h-4 text-indigo-400" /> Plate Layout
+                                    </h3>
+                                    <button onClick={() => setShowPlateModal(false)} className="text-xs bg-zinc-800 hover:bg-zinc-750 px-2 py-1 rounded">Close</button>
+                                </div>
+                                {plateCalcWeight && (() => {
+                                    const res = calculatePlatesNeeded(plateCalcWeight);
+                                    if (res.error) return <p className="text-xs text-amber-400 text-center">{res.error}</p>;
+                                    return (
+                                        <div className="space-y-4">
+                                            <div className="bg-zinc-950 text-center p-4 rounded-xl border border-zinc-800">
+                                                <span className="text-[10px] opacity-50 block">Target Weight:</span>
+                                                <h4 className="text-2xl font-black text-indigo-400">{plateCalcWeight} {settings.unit}</h4>
+                                                <span className="text-[9px] opacity-60">Bar: {settings.barWeight}{settings.unit} Included</span>
+                                            </div>
+                                            <div className="space-y-2">
+                                                {Object.entries(res.plates).map(([plate, qty]) => (
+                                                    <div key={plate} className="flex justify-between items-center text-xs p-2.5 bg-zinc-950 rounded border border-zinc-800">
+                                                        <span>{plate} {settings.unit} Plate</span>
+                                                        <strong className="text-indigo-400">Qty: {qty} &times; each side</strong>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    );
+                                })()}
+                            </div>
+                        </div>
+                    )}
+
+                    {/* Navigation bar bottom */}
+                    <footer className="fixed bottom-0 left-0 right-0 border-t bg-zinc-900/95 border-zinc-800 text-zinc-400 z-40">
+                        <div className="max-w-5xl mx-auto grid grid-cols-5 text-center py-2.5">
+                            <button onClick={() => setActiveTab('dashboard')} className={`flex flex-col items-center justify-center text-[10px] ${activeTab === 'dashboard' ? 'text-indigo-400 font-bold' : ''}`}>
+                                <Icon name="calendar" className="w-5 h-5 mb-0.5" />
+                                <span>Cycle</span>
+                            </button>
+                            <button onClick={() => activeSession ? setActiveTab('active-workout') : triggerNotification("Start a workout first!", "info")} className={`flex flex-col items-center justify-center text-[10px] relative ${activeTab === 'active-workout' ? 'text-indigo-400 font-bold' : ''}`}>
+                                {activeSession && <span className="absolute top-1 right-5 h-2 w-2 rounded-full bg-red-500 animate-ping" />}
+                                <Icon name="dumbbell" className="w-5 h-5 mb-0.5" />
+                                <span>Play</span>
+                            </button>
+                            <button onClick={() => setActiveTab('logs')} className={`flex flex-col items-center justify-center text-[10px] ${activeTab === 'logs' ? 'text-indigo-400 font-bold' : ''}`}>
+                                <Icon name="history" className="w-5 h-5 mb-0.5" />
+                                <span>Export</span>
+                            </button>
+                            <button onClick={() => setActiveTab('analytics')} className={`flex flex-col items-center justify-center text-[10px] ${activeTab === 'analytics' ? 'text-indigo-400 font-bold' : ''}`}>
+                                <Icon name="trending" className="w-5 h-5 mb-0.5" />
+                                <span>Charts</span>
+                            </button>
+                            <button onClick={() => setActiveTab('settings')} className={`flex flex-col items-center justify-center text-[10px] ${activeTab === 'settings' ? 'text-indigo-400 font-bold' : ''}`}>
+                                <Icon name="settings" className="w-5 h-5 mb-0.5" />
+                                <span>Settings</span>
+                            </button>
+                        </div>
+                    </footer>
+                </div>
+            );
+        }
+
+        const container = document.getElementById('root');
+        const root = ReactDOM.createRoot(container);
+        root.render(<App />);
+    </script>
+</body>
+</html>
+
+```
